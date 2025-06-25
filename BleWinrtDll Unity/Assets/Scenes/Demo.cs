@@ -37,6 +37,8 @@ public class Demo : MonoBehaviour
 
     public GameObject testGameObject;
 
+    float currTime;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -140,9 +142,13 @@ public class Demo : MonoBehaviour
         }
         if (isSubscribed)
         {
+            currTime += Time.deltaTime * 1000;
+            if (currTime > 100) return;
+            currTime = 0;
             BleApi.BLEData res = new BleApi.BLEData();
             while (BleApi.PollData(out res, false))
             {
+                Debug.Log("Polling data!!");
                 string text = $"Rotary: {((byte)BitConverter.ToChar(res.buf, 5)).ToString()}\n";
                 text += $"Stick X: {BitConverter.ToUInt16(res.buf, 1).ToString()}\n";
                 text += $"Stick Y: {BitConverter.ToUInt16(res.buf, 3).ToString()}\n";
