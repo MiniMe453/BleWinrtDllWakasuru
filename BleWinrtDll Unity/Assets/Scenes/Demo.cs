@@ -147,20 +147,37 @@ public class Demo : MonoBehaviour
                 text += $"Stick X: {BitConverter.ToUInt16(res.buf, 1).ToString()}\n";
                 text += $"Stick Y: {BitConverter.ToUInt16(res.buf, 3).ToString()}\n";
                 text += $"Slider: {((byte)BitConverter.ToChar(res.buf, 0)).ToString()}\n";
+
+                byte colorButtonInputValue = (byte)BitConverter.ToChar(res.buf, 18);
+                int coldButton = colorButtonInputValue & 0x01;
+                int hotButton = (colorButtonInputValue >> 1) & 0x01;
+                int color03b = (colorButtonInputValue >> 2) & 0x01;
+                int color03a = (colorButtonInputValue >> 3) & 0x01;
+                int color02b = (colorButtonInputValue >> 4) & 0x01;
+                int color02a = (colorButtonInputValue >> 5) & 0x01;
+                int color01b = (colorButtonInputValue >> 6) & 0x01;
+                int color01a = (colorButtonInputValue >> 7) & 0x01;
+
+                byte popButtonInputValue = (byte)BitConverter.ToChar(res.buf, 19);
+                int stickPress = (popButtonInputValue) & 0x01;
+                int popButton05 = (popButtonInputValue >> 1) & 0x01;
+                int popButton04 = (popButtonInputValue >> 2) & 0x01;
+                int popButton03 = (popButtonInputValue >> 3) & 0x01;
+                int popButton02 = (popButtonInputValue >> 4) & 0x01;
+                int popButton01 = (popButtonInputValue >> 5) & 0x01;
+
+                text += $"ColorButtons: {((byte)BitConverter.ToChar(res.buf, 18)).ToString()}\n";
+                text += $"PopButtons: {((byte)BitConverter.ToChar(res.buf, 19)).ToString()}";
+                subcribeText.text = text;
+
+
                 var xAxis = ExtractQuaternionAxisAsFloat(res.buf, 6);
                 var yAxis = ExtractQuaternionAxisAsFloat(res.buf, 9);
                 var zAxis = ExtractQuaternionAxisAsFloat(res.buf, 12);
                 var wAxis = ExtractQuaternionAxisAsFloat(res.buf, 15);
-
+                //We need to do some swizzling because the quaternion values from the MPU6050 don't
+                //align with the Unity quaternion values.
                 testGameObject.transform.rotation = new Quaternion(xAxis, -zAxis, yAxis, wAxis);
-
-                // for (int i = 0; i < 3; i++)
-                // {
-                //     newArray[i] = res.buf[6 + i];
-                // }
-                // subcribeText.text = BitConverter.ToString(res.buf, 0, res.size);
-                subcribeText.text = text;
-                // subcribeText.text = Encoding.ASCII.GetString(res.buf, 0, res.size);
             }
         }
         {
