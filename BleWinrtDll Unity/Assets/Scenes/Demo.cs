@@ -35,6 +35,8 @@ public class Demo : MonoBehaviour
     Dictionary<string, Dictionary<string, string>> devices = new Dictionary<string, Dictionary<string, string>>();
     string lastError;
 
+    public GameObject testGameObject;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -52,25 +54,36 @@ public class Demo : MonoBehaviour
             do
             {
                 status = BleApi.PollDevice(ref res, false);
-                if (status == BleApi.ScanStatus.AVAILABLE)
+                if (status == BleApi.ScanStatus.AVAILABLE && !devices.ContainsKey(res.id))
                 {
-                    if (!devices.ContainsKey(res.id))
-                        devices[res.id] = new Dictionary<string, string>() {
-                            { "name", "" },
-                            { "isConnectable", "False" }
-                        };
+
+                    devices[res.id] = new Dictionary<string, string>() {
+                        { "name", res.name },
+                        { "isConnectable", res.isConnectable.ToString() }
+                    };
+
+                    // if (devices.ContainsKey(res.id)) continue;
+                    // Debug.Log(res.name);
+                    // Debug.Log(res.isConnectable.ToString());
+
+                    // Debug.Log(res.isConnectableUpdated.ToString());
+
                     if (res.nameUpdated)
                         devices[res.id]["name"] = res.name;
                     if (res.isConnectableUpdated)
+                    {
                         devices[res.id]["isConnectable"] = res.isConnectable.ToString();
+                        // Debug.Log("Updating is connectable!!");
+                    }
                     // consider only devices which have a name and which are connectable
-                    if (devices[res.id]["name"] != "" && devices[res.id]["isConnectable"] == "True")
+                    // && devices[res.id]["isConnectable"] == "True"
+                    if (devices[res.id]["name"] != "")
                     {
                         // add new device to list
                         GameObject g = Instantiate(deviceScanResultProto, scanResultRoot);
                         g.name = res.id;
                         g.transform.GetChild(0).GetComponent<Text>().text = devices[res.id]["name"];
-                        g.transform.GetChild(1).GetComponent<Text>().text = res.id;
+                        g.transform.GetChild(1).GetComponent<Text>().text = devices[res.id]["isConnectable"];
                     }
                 }
                 else if (status == BleApi.ScanStatus.FINISHED)
@@ -130,7 +143,23 @@ public class Demo : MonoBehaviour
             BleApi.BLEData res = new BleApi.BLEData();
             while (BleApi.PollData(out res, false))
             {
-                subcribeText.text = BitConverter.ToString(res.buf, 0, res.size);
+                string text = $"Rotary: {((byte)BitConverter.ToChar(res.buf, 5)).ToString()}\n";
+                text += $"Stick X: {BitConverter.ToUInt16(res.buf, 1).ToString()}\n";
+                text += $"Stick Y: {BitConverter.ToUInt16(res.buf, 3).ToString()}\n";
+                text += $"Slider: {((byte)BitConverter.ToChar(res.buf, 0)).ToString()}\n";
+                var xAxis = ExtractQuaternionAxisAsFloat(res.buf, 6);
+                var yAxis = ExtractQuaternionAxisAsFloat(res.buf, 9);
+                var zAxis = ExtractQuaternionAxisAsFloat(res.buf, 12);
+                var wAxis = ExtractQuaternionAxisAsFloat(res.buf, 15);
+
+                testGameObject.transform.rotation = new Quaternion(xAxis, -zAxis, yAxis, wAxis);
+
+                // for (int i = 0; i < 3; i++)
+                // {
+                //     newArray[i] = res.buf[6 + i];
+                // }
+                // subcribeText.text = BitConverter.ToString(res.buf, 0, res.size);
+                subcribeText.text = text;
                 // subcribeText.text = Encoding.ASCII.GetString(res.buf, 0, res.size);
             }
         }
@@ -147,6 +176,14 @@ public class Demo : MonoBehaviour
         }
     }
 
+    private float ExtractQuaternionAxisAsFloat(byte[] buffer, int startIdx)
+    {
+        var axisArray = new byte[4];
+        Array.Copy(buffer, startIdx, axisArray, 0, 3);
+        
+        return BitConverter.ToInt32(axisArray, 0) / 16777215f * 2f - 1f;
+    }
+
     private void OnApplicationQuit()
     {
         BleApi.Quit();
@@ -159,6 +196,9 @@ public class Demo : MonoBehaviour
             // start new scan
             for (int i = scanResultRoot.childCount - 1; i >= 0; i--)
                 Destroy(scanResultRoot.GetChild(i).gameObject);
+            
+            devices = new Dictionary<string, Dictionary<string, string>>();
+
             BleApi.StartDeviceScan();
             isScanningDevices = true;
             deviceScanButtonText.text = "Stop scan";
@@ -192,6 +232,7 @@ public class Demo : MonoBehaviour
         {
             // start new scan
             serviceDropdown.ClearOptions();
+            Debug.Log(selectedDeviceId);
             BleApi.ScanServices(selectedDeviceId);
             isScanningServices = true;
             serviceScanStatusText.text = "scanning";
